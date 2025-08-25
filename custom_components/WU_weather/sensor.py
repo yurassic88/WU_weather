@@ -5,6 +5,7 @@ from datetime import timedelta
 
 import voluptuous as vol
 import requests
+import datetime
 from bs4 import BeautifulSoup
 
 from homeassistant.components.sensor import (
@@ -77,7 +78,8 @@ class WUWeatherSensor (SensorEntity):
                             'pressure': 1013,
                             'humidity': 86,
                             'wind_bearing': 150,
-                            'uv_index': 1}
+                            'uv_index': 1,
+                            'latest_update': datetime.now().strftime("%m/%d/%Y, %H:%M:%S")}
 
     @property
     def name(self) -> str:
@@ -171,6 +173,8 @@ class WUWeatherSensor (SensorEntity):
 
                         if 'uvHigh' in weather_summary:
                             self._attributes["uv_index"] = weather_summary['uvHigh']
+
+                        self._attributes['latest_update'] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
 
             except ValueError as e:
                 _LOGGER.error("Error fetching current weather data: %s", e)

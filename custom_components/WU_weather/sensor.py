@@ -56,7 +56,7 @@ class _LOGGER:
         print(error)
 
 
-class WUWeatherSensor:
+class WUWeatherSensor (SensorEntity):
     """Representation of the Combined Weather Sensor."""
 
     def __init__(self, name, current_weather_url, forecast_url=""):

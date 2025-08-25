@@ -1,7 +1,7 @@
 {
   "domain": "WU_weather",
   "name": "WU_weather",
-  "documentation": "https://github.com/yurassic88/WU_weather",
+  "documentation": "https://github.com/yurassic88/WU_weather/blob/main/custom_components/WU_weather/README.md",
   "issue_tracker": "https://github.com/yurassic88/WU_weather/issues",
   "codeowners": ["@yurassic88"],
   "version": "1.0.1",

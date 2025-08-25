@@ -56,6 +56,7 @@ class _LOGGER:
         print(error)
 
 
+
 class WUWeatherSensor (SensorEntity):
     """Representation of the Combined Weather Sensor."""
 

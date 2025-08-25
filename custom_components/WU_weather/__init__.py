@@ -8,7 +8,8 @@ from homeassistant.const import Platform
 from .const import DOMAIN
 
 # List of platforms that this integration will create.
-PLATFORMS: list[Platform] = [Platform.SENSOR]#, Platform.WEATHER]
+#PLATFORMS: list[Platform] = [Platform.SENSOR]#, Platform.WEATHER]
+PLATFORMS: list[Platform] = [Platform.WEATHER]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

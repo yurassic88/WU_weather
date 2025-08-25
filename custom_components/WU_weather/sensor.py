@@ -1,11 +1,10 @@
 """Platform for sensor integration for Combined Weather."""
 from __future__ import annotations
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 
 import voluptuous as vol
 import requests
-import datetime
 from bs4 import BeautifulSoup
 
 from homeassistant.components.sensor import (

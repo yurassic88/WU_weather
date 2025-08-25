@@ -1,7 +1,8 @@
 """Platform for weather integration."""
 from __future__ import annotations
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
+import json
 
 import voluptuous as vol
 import requests
@@ -18,6 +19,7 @@ from homeassistant.const import (
     UnitOfPressure,
     UnitOfLength,
 )
+from homeassistant.exceptions import ConfigEntryNotReady
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -44,8 +46,13 @@ async def async_setup_platform(hass, config, async_add_entities, discovery_info=
 
     coordinator = WeatherUpdateCoordinator(hass, current_weather_url)
     
-    # Manually trigger the first refresh
-    await coordinator.async_config_entry_first_refresh()
+    try:
+        # Manually trigger the first refresh to handle potential startup errors
+        await coordinator.async_config_entry_first_refresh()
+    except UpdateFailed as err:
+        # If the first refresh fails, we raise this special exception
+        # to let Home Assistant know it should retry later.
+        raise ConfigEntryNotReady from err
 
     async_add_entities([WUWeather(coordinator, name)])
 
@@ -64,7 +71,11 @@ class WeatherUpdateCoordinator(DataUpdateCoordinator):
             update_interval=SCAN_INTERVAL,
         )
 
-    def _fetch_data(self, url):
+    def FtoC(self, fahrenheit):
+        """Convert Fahrenheit to Celsius."""
+        return (fahrenheit - 32) * 5.0/9.0
+
+    def _fetch_data(self):
         """Fetch data from a URL in a blocking way."""
         try:
             response = requests.get(self.url, timeout=10)
@@ -74,11 +85,10 @@ class WeatherUpdateCoordinator(DataUpdateCoordinator):
             raise UpdateFailed(f"Error communicating with API: {err}")
 
     async def _async_update_data(self):
-        """Fetch data from API endpoint and ensure metric data is available."""
+        """Fetch data from API endpoint and parse it."""
         try:
             # Fetch data for the user's selected unit system
-            current_page = await self.hass.async_add_executor_job(self._fetch_data, self.url)
-            response.raise_for_status()
+            current_page = await self.hass.async_add_executor_job(self._fetch_data)
             
             current_soup = BeautifulSoup(current_page, "html.parser")
             temp_element = current_soup.find("script", id="app-root-state")
@@ -124,14 +134,13 @@ class WeatherUpdateCoordinator(DataUpdateCoordinator):
 
                         data['latest_update'] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
 
-            except ValueError as e:
-                _LOGGER.error("Error fetching current weather data: %s", e)
-                self._state = None # Set to unavailable on error
-                return # Stop the update if the first source fails
+            except (ValueError, KeyError) as e:
+                _LOGGER.error("Error parsing weather data: %s", e)
+                raise UpdateFailed(f"Error parsing weather data: {e}")
 
             return data
-        except requests.exceptions.RequestException as err:
-            raise UpdateFailed(f"Error communicating with API: {err}")
+        except Exception as err:
+            raise UpdateFailed(f"Error fetching data: {err}")
 
 
 class WUWeather(CoordinatorEntity, WeatherEntity):

@@ -65,7 +65,19 @@ class WUWeatherSensor (SensorEntity):
         self._current_weather_url = current_weather_url
         self._forecast_url = forecast_url
         self._state = None
-        self._attributes = {}
+        self._attributes = {'dew_point': 11.67,
+                            'apparent_temperature': 14.2,
+                            'precipitation': 0,
+                            'precipitation_unit': 'mm',
+                            'temperature': 14.22,
+                            'temperature_unit': '°C',
+                            'wind_speed': 2.57,
+                            'wind_speed_unit': 'km/h',
+                            'wind_gust_speed': 3.70,
+                            'pressure': 1013,
+                            'humidity': 86,
+                            'wind_bearing': 150,
+                            'uv_index': 1}
 
     @property
     def name(self) -> str:

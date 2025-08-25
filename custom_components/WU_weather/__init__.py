@@ -3,11 +3,12 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.const import Platform
 
 from .const import DOMAIN
 
 # List of platforms that this integration will create.
-PLATFORMS: list[str] = ["sensor"]
+PLATFORMS: list[Platform] = [Platform.SENSOR]#, Platform.WEATHER]
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

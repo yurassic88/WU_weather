@@ -11,7 +11,7 @@ from homeassistant.components.sensor import (
     SensorEntity,
     PLATFORM_SCHEMA,
 )
-from homeassistant.const import TEMP_CELSIUS
+from homeassistant.const import UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
@@ -92,7 +92,7 @@ class WUWeatherSensor (SensorEntity):
     @property
     def unit_of_measurement(self) -> str:
         """Return the unit of measurement for the state."""
-        return TEMP_CELSIUS
+        return UnitOfTemperature.CELSIUS
 
     @property
     def extra_state_attributes(self):

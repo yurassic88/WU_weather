@@ -1,0 +1,10 @@
+{
+  "domain": "WU_weather",
+  "name": "WU_weather",
+  "documentation": "https://github.com/yurassic88/WU_weather",
+  "issue_tracker": "https://github.com/yurassic88/WU_weather/issues",
+  "codeowners": ["@yurassic88"],
+  "version": "1.0.0",
+  "iot_class": "cloud_polling",
+  "config_flow": true
+}

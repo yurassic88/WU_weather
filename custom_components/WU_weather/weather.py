@@ -64,14 +64,23 @@ class WeatherUpdateCoordinator(DataUpdateCoordinator):
             update_interval=SCAN_INTERVAL,
         )
 
+    def _fetch_data(self, url):
+        """Fetch data from a URL in a blocking way."""
+        try:
+            response = requests.get(self.url, timeout=10)
+            response.raise_for_status()
+            return response.content
+        except requests.exceptions.RequestException as err:
+            raise UpdateFailed(f"Error communicating with API: {err}")
+
     async def _async_update_data(self):
         """Fetch data from API endpoint and ensure metric data is available."""
         try:
             # Fetch data for the user's selected unit system
-            response = await requests.get(self.url, timeout=10)
+            current_page = await self.hass.async_add_executor_job(self._fetch_data, self.url)
             response.raise_for_status()
             
-            current_soup = BeautifulSoup(current_page.content, "html.parser")
+            current_soup = BeautifulSoup(current_page, "html.parser")
             temp_element = current_soup.find("script", id="app-root-state")
             data={}
             try:

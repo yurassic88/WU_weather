@@ -68,9 +68,7 @@ class WeatherUpdateCoordinator(DataUpdateCoordinator):
         """Fetch data from API endpoint and ensure metric data is available."""
         try:
             # Fetch data for the user's selected unit system
-            response = await self.hass.async_to_executor_thread(
-                requests.get, self.url, {"timeout": 10}
-            )
+            response = await requests.get(self.url, timeout=10)
             response.raise_for_status()
             
             current_soup = BeautifulSoup(current_page.content, "html.parser")

@@ -54,6 +54,8 @@ import json
 class _LOGGER:
     def error(error):
         print(error)
+    def info(msg):
+        print(msg)
 
 
 class WUWeatherSensor (SensorEntity):
@@ -78,7 +80,7 @@ class WUWeatherSensor (SensorEntity):
                             'humidity': 86,
                             'wind_bearing': 150,
                             'uv_index': 1,
-                            'latest_update': datetime.now().strftime("%m/%d/%Y, %H:%M:%S")}
+                            'latest_update': 'n/a'}
 
     @property
     def name(self) -> str:

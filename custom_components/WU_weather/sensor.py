@@ -47,10 +47,19 @@ def setup_platform(
     add_entities([WUWeatherSensor(name, current_weather_url, forecast_url)])
 
 
-class WUWeatherSensor(SensorEntity):
+import requests
+from bs4 import BeautifulSoup
+import json
+
+class _LOGGER:
+    def error(error):
+        print(error)
+
+
+class WUWeatherSensor:
     """Representation of the Combined Weather Sensor."""
 
-    def __init__(self, name, current_weather_url, forecast_url):
+    def __init__(self, name, current_weather_url, forecast_url=""):
         """Initialize the sensor."""
         self._name = name
         self._current_weather_url = current_weather_url
@@ -78,6 +87,9 @@ class WUWeatherSensor(SensorEntity):
         """Return other details about the sensor as attributes."""
         return self._attributes
 
+    def FtoC(self, temp):
+        return (temp-32)*5/9
+
     def update(self) -> None:
         """Fetch new state data for the sensor."""
         
@@ -91,19 +103,67 @@ class WUWeatherSensor(SensorEntity):
             
             # Example: Scrape temperature (replace with your actual element and class)
             # Find the HTML element containing the temperature and extract its text.
-            temp_element = current_soup.find("span", class_="temperature-class")
-            if temp_element:
-                temperature = temp_element.text
-                self._state = temperature.replace("°C", "").strip()
-            else:
-                _LOGGER.warning("Could not find temperature element on current weather page.")
-                self._state = None
+            temp_element = current_soup.find("script", id="app-root-state")
+            try:
+                json_object = json.loads(temp_element.get_text())
+                for k in json_object.keys():
+                    if 'b' in json_object[k] and 'summaries' in json_object[k]['b']:
+                        weather_summary = json_object[k]['b']['summaries'][0]
+                        # apparent_temperature: 12.0
+                        # cloud_coverage: 0
+                        # dew_point: 5.0
+                        # humidity: 76
+                        # precipitation_unit: mm
+                        # pressure: 1019
+                        # pressure_unit: hPa
+                        # temperature: 14.2
+                        # temperature_unit: °C
+                        # uv_index: 2
+                        # visibility: 10
+                        # visibility_unit: km
+                        # wind_bearing: 260
+                        # wind_gust_speed: 51.56
+                        # wind_speed: 35.17
+                        # wind_speed_unit: km/h
+                        if "imperial" in weather_summary:
+                            if "dewptAvg" in weather_summary['imperial']:
+                                print(weather_summary['imperial']['dewptAvg'])
+                                self._attributes["dew_point"] = self.FtoC(weather_summary['imperial']['dewptAvg'])
 
+                            if "windchillAvg" in weather_summary['imperial']:
+                                self._attributes["apparent_temperature"] = self.FtoC(weather_summary['imperial']['windchillAvg'])
 
-            # Example: Scrape humidity (replace with your actual element and class)
-            humidity_element = current_soup.find("span", class_="humidity-class")
-            if humidity_element:
-                 self._attributes["humidity"] = humidity_element.text.strip()
+                            if "precipRate" in weather_summary['imperial']:
+                                self._attributes["precipitation"] = weather_summary['imperial']['precipRate']
+                                self._attributes["precipitation_unit"] = "mm"
+
+                            if "tempAvg" in weather_summary['imperial']:
+                                self._attributes["temperature"] = self.FtoC(weather_summary['imperial']['tempAvg'])
+                                self._attributes["temperature_unit"] = "°C"
+
+                            if "windspeedAvg" in weather_summary['imperial']:
+                                self._attributes["wind_speed"] = weather_summary['imperial']['windspeedAvg']*1.60934
+                                self._attributes["wind_speed_unit"] = "km/h"
+
+                            if "windgustAvg" in weather_summary['imperial']:
+                                self._attributes["wind_gust_speed"] = weather_summary['imperial']['windgustAvg']*1.60934
+
+                            if "pressureMax" in weather_summary['imperial']:
+                                self._attributes["pressure"] = weather_summary['imperial']['pressureMax']*33.86389
+
+                        if 'humidityAvg' in weather_summary:
+                            self._attributes["humidity"] = weather_summary['humidityAvg']
+
+                        if 'winddirAvg' in weather_summary:
+                            self._attributes["wind_bearing"] = weather_summary['winddirAvg']
+
+                        if 'uvHigh' in weather_summary:
+                            self._attributes["uv_index"] = weather_summary['uvHigh']
+
+            except ValueError as e:
+                _LOGGER.error("Error fetching current weather data: %s", e)
+                self._state = None # Set to unavailable on error
+                return # Stop the update if the first source fails
 
         except requests.exceptions.RequestException as e:
             _LOGGER.error("Error fetching current weather data: %s", e)
@@ -112,28 +172,28 @@ class WUWeatherSensor(SensorEntity):
 
         # --- Forecast Scraping ---
         # ** REPLACE THIS SECTION WITH YOUR ACTUAL SCRAPING LOGIC **
-        try:
-            # Make a request to the forecast URL
-            forecast_page = requests.get(self._forecast_url, timeout=10)
-            forecast_page.raise_for_status()
-            forecast_soup = BeautifulSoup(forecast_page.content, "html.parser")
+        # try:
+        #     # Make a request to the forecast URL
+        #     forecast_page = requests.get(self._forecast_url, timeout=10)
+        #     forecast_page.raise_for_status()
+        #     forecast_soup = BeautifulSoup(forecast_page.content, "html.parser")
 
-            # Example: Scrape forecast for the next 3 days
-            forecasts = []
-            # Find all parent elements for a daily forecast
-            for day in forecast_soup.find_all("div", class_="forecast-day-class", limit=3):
-                date = day.find("span", class_="date-class").text
-                temp_high = day.find("span", class_="temp-high-class").text
-                temp_low = day.find("span", class_="temp-low-class").text
-                condition = day.find("span", class_="condition-class").text
-                forecasts.append({
-                    "date": date.strip(),
-                    "temp_high": temp_high.strip(),
-                    "temp_low": temp_low.strip(),
-                    "condition": condition.strip(),
-                })
-            self._attributes["forecast"] = forecasts
+        #     # Example: Scrape forecast for the next 3 days
+        #     forecasts = []
+        #     # Find all parent elements for a daily forecast
+        #     for day in forecast_soup.find_all("div", class_="forecast-day-class", limit=3):
+        #         date = day.find("span", class_="date-class").text
+        #         temp_high = day.find("span", class_="temp-high-class").text
+        #         temp_low = day.find("span", class_="temp-low-class").text
+        #         condition = day.find("span", class_="condition-class").text
+        #         forecasts.append({
+        #             "date": date.strip(),
+        #             "temp_high": temp_high.strip(),
+        #             "temp_low": temp_low.strip(),
+        #             "condition": condition.strip(),
+        #         })
+        #     self._attributes["forecast"] = forecasts
 
-        except requests.exceptions.RequestException as e:
-            _LOGGER.error("Error fetching forecast data: %s", e)
-            self._attributes["forecast"] = None # Set forecast to unavailable on error
+        # except requests.exceptions.RequestException as e:
+        #     _LOGGER.error("Error fetching forecast data: %s", e)
+        #     self._attributes["forecast"] = None # Set forecast to unavailable on error

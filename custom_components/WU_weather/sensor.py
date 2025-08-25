@@ -54,8 +54,6 @@ import json
 class _LOGGER:
     def error(error):
         print(error)
-    def info(msg):
-        print(msg)
 
 
 class WUWeatherSensor (SensorEntity):
@@ -108,7 +106,6 @@ class WUWeatherSensor (SensorEntity):
 
     def update(self) -> None:
         """Fetch new state data for the sensor."""
-        _LOGGER.info("WU update triggered")
         # --- Current Weather Scraping ---
         # ** REPLACE THIS SECTION WITH YOUR ACTUAL SCRAPING LOGIC **
         try:
@@ -116,7 +113,6 @@ class WUWeatherSensor (SensorEntity):
             current_page = requests.get(self._current_weather_url, timeout=10)
             current_page.raise_for_status() # Raise an exception for bad status codes
             current_soup = BeautifulSoup(current_page.content, "html.parser")
-            _LOGGER.info("WU request fulfiled")
             # Example: Scrape temperature (replace with your actual element and class)
             # Find the HTML element containing the temperature and extract its text.
             temp_element = current_soup.find("script", id="app-root-state")

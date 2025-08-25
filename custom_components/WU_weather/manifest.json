@@ -6,6 +6,6 @@
   "codeowners": ["@yurassic88"],
   "version": "1.0.1",
   "iot_class": "cloud_polling",
-  "requirements": ["requests", "bs4", "json"],
+  "requirements": ["requests", "bs4"],
   "config_flow": true
 }

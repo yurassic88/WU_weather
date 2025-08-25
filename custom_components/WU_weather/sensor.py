@@ -81,6 +81,7 @@ class WUWeatherSensor (SensorEntity):
                             'wind_bearing': 150,
                             'uv_index': 1,
                             'latest_update': 'n/a'}
+        self.update()
 
     @property
     def name(self) -> str:

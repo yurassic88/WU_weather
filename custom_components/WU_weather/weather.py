@@ -7,6 +7,7 @@ import json
 import voluptuous as vol
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse, parse_qs
 
 from homeassistant.components.weather import (
     WeatherEntity,
@@ -63,6 +64,7 @@ class WeatherUpdateCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, current_weather_url):
         """Initialize."""
         self.url = current_weather_url
+        self.api_key = ""
 
         super().__init__(
             hass,
@@ -83,6 +85,15 @@ class WeatherUpdateCoordinator(DataUpdateCoordinator):
             return response.content
         except requests.exceptions.RequestException as err:
             raise UpdateFailed(f"Error communicating with API: {err}")
+    
+    def _fetch_data_with_api(self):
+        """Fetch data from a URL in a blocking way."""
+        try:
+            response = requests.get(f"https://api.weather.com/v2/pws/observations/current?apiKey={self.api_key}&stationId=IAMSTE256&numericPrecision=decimal&format=json&units=m", timeout=10)
+            response.raise_for_status()
+            return response.json()
+        except requests.exceptions.RequestException as err:
+            raise UpdateFailed(f"Error communicating with API: {err}")
 
     async def _async_update_data(self):
         """Fetch data from API endpoint and parse it."""
@@ -93,50 +104,64 @@ class WeatherUpdateCoordinator(DataUpdateCoordinator):
             current_soup = BeautifulSoup(current_page, "html.parser")
             temp_element = current_soup.find("script", id="app-root-state")
             data={}
+            api_key = ""
             try:
                 json_object = json.loads(temp_element.get_text())
                 for k in json_object.keys():
-                    if 'b' in json_object[k] and 'summaries' in json_object[k]['b']:
-                        weather_summary = json_object[k]['b']['summaries'][0]
-                        if "imperial" in weather_summary:
-                            if "dewptAvg" in weather_summary['imperial']:
-                                data["dew_point"] = self.FtoC(weather_summary['imperial']['dewptAvg'])
-
-                            if "windchillAvg" in weather_summary['imperial']:
-                                data["apparent_temperature"] = self.FtoC(weather_summary['imperial']['windchillAvg'])
-
-                            if "precipRate" in weather_summary['imperial']:
-                                data["precipitation"] = weather_summary['imperial']['precipRate']*25.4
-                                data["precipitation_unit"] = "mm"
-
-                            if "tempAvg" in weather_summary['imperial']:
-                                data["temperature"] = self.FtoC(weather_summary['imperial']['tempAvg'])
-                                data["temperature_unit"] = "°C"
-
-                            if "windspeedAvg" in weather_summary['imperial']:
-                                data["wind_speed"] = weather_summary['imperial']['windspeedAvg']*1.60934
-                                data["wind_speed_unit"] = "km/h"
-
-                            if "windgustAvg" in weather_summary['imperial']:
-                                data["wind_gust_speed"] = weather_summary['imperial']['windgustAvg']*1.60934
-
-                            if "pressureMax" in weather_summary['imperial']:
-                                data["pressure"] = weather_summary['imperial']['pressureMax']*33.86389
-
-                        if 'humidityAvg' in weather_summary:
-                            data["humidity"] = weather_summary['humidityAvg']
-
-                        if 'winddirAvg' in weather_summary:
-                            data["wind_bearing"] = weather_summary['winddirAvg']
-
-                        if 'uvHigh' in weather_summary:
-                            data["uv_index"] = weather_summary['uvHigh']
-
-                        data['latest_update'] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
-
+                    if('u' in json_object[k]):
+                        api_key = parse_qs(urlparse(json_object[k]['u']).query).get("apiKey", " ")[0]
+                        print(api_key)
+                        break
+                    
             except (ValueError, KeyError) as e:
                 _LOGGER.error("Error parsing weather data: %s", e)
                 raise UpdateFailed(f"Error parsing weather data: {e}")
+            
+            if(api_key!=""):
+                self.api_key = api_key
+
+                current_weather = await self.hass.async_add_executor_job(self._fetch_data_with_api)
+                if 'observations' in current_weather and len(current_weather['observations'])>0:
+                    weather_summary = current_weather['observations'][0]
+
+                    if "metric" in weather_summary:
+                        metric = weather_summary['metric']
+                        if "dewpt" in metric:
+                            data["dew_point"] = metric["dewpt"]
+
+                        if "windChill" in metric:
+                            data["apparent_temperature"] = metric["windChill"]
+
+                        if "precipRate" in metric:
+                            data["precipitation"] = metric["precipRate"]
+                            data["precipitation_unit"] = "mm"
+
+                        if "temp" in metric:
+                            data["temperature"] = metric["temp"]
+                            data["temperature_unit"] = "°C"
+
+                        if "windSpeed" in metric:
+                            data["wind_speed"] = metric["windSpeed"]
+                            data["wind_speed_unit"] = "km/h"
+                        
+                        if "windGust" in metric:
+                            data["wind_gust_speed"] = metric["windGust"]
+
+                        if "pressure" in metric:
+                            data["pressure"] = metric["pressure"]
+
+                    if 'humidity' in weather_summary:
+                        data["humidity"] = weather_summary['humidity']
+
+                    if 'winddir' in weather_summary:
+                        data["wind_bearing"] = weather_summary['winddir']
+
+                    if 'uv' in weather_summary:
+                        data["uv_index"] = weather_summary['uv']
+
+                    data['latest_update'] = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+
+            
 
             return data
         except Exception as err:
